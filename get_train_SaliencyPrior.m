@@ -41,7 +41,7 @@ opts.train.learningRate = 0.0002*ones(1,5);
 opts.train.numEpochs = numel(opts.train.learningRate); 
 opts.train.batchSize = 1;
 opts.train.weightDecay = 0;
-opts.train.derOutputsG = {'L1loss', 0.0005};
+opts.train.derOutputsG = {'L1loss', 0.001};
 opts.train.derOutputsD = {'Dloss', 1000};
 opts.train.gpus = opts.idx_gpus;
 if opts.train.gpus == 0
@@ -136,8 +136,8 @@ netG.meta.trainOpts = opts.train;
 % conv_param = struct('f', [4 4 64*8 1], 'pad',  0, 'stride', 2, 'bias', false);
 % i = i+1;  netD = get_Conv_dag(netD, i, sprintf('x%d',i-1), sprintf('x%d',i), conv_param);
 % i = i+1;  netD.addLayer('D_loss', dagnn.Loss('loss', 'logistic'), { sprintf('x%d',i-1),'label'},'logistic');
-
-netD = dagnn.DagNN.loadobj(load('net/imagenet-googlenet-dag')) ;
+%load the pretrained model
+netD = dagnn.DagNN.loadobj(load('net/imagenet-resnet-152-dag')) ;
 netD.addLayer('Dloss', dagnn.Loss('loss', 'softmaxlog'), {'prob', 'label'}, 'Dloss');
 netD.addLayer('error', dagnn.Loss('loss', 'classerror'), {'prob','label'}, 'error') ;
 % netD.initParams();
@@ -149,13 +149,16 @@ net = [netG, netD];
 % --------------------------------------------------------------------
 %                                                                Train
 % --------------------------------------------------------------------
-imageName = dir(fullfile('D:\ILSVRC2010\ILSVRC2010_images_val\val\'));
-
+imageName = dir(fullfile('testInput\'));
+%D:\ILSVRC2012_img_val\
 global x ;
 global y ;
-setGlobalx(36);
-setGlobaly(99);
-for i=102:1:numel(imageName)
+setGlobalx(0);
+setGlobaly(0);
+
+prepareGPUs(opts, true) ;
+
+for i=3:1:numel(imageName)
     cnn_train_dag_sp(net, imdb,imageName(i).name, @getBatchHdd, opts.train, ...
                                        'val', find(imdb.images.set == 2)) ;
     r = getGlobaly;
@@ -163,7 +166,7 @@ for i=102:1:numel(imageName)
     
     fenzi = getGlobalx();
     fenmu = getGlobaly();
-    fprintf('Failue rate: %d -----------------------------------------------\n', fenzi/fenmu);
+    fprintf('Failue rate: %d-----------------------------------------------\n', fenzi/fenmu);
            
 end
 
@@ -195,6 +198,44 @@ inputs = ({'noise', noise, 'data', data, 'label0',label0 'label1',label1} );
 
 return;
 
+
+
+% -------------------------------------------------------------------------
+function clearMex()
+% -------------------------------------------------------------------------
+clear vl_tflow vl_imreadjpeg ;
+
+
+% -------------------------------------------------------------------------
+function prepareGPUs(opts, cold)
+% -------------------------------------------------------------------------
+numGpus = 1 ;
+if numGpus > 1
+  % check parallel pool integrity as it could have timed out
+  pool = gcp('nocreate') ;
+  if ~isempty(pool) && pool.NumWorkers ~= numGpus
+    delete(pool) ;
+  end
+  pool = gcp('nocreate') ;
+  if isempty(pool)
+    parpool('local', numGpus) ;
+    cold = true ;
+  end
+
+end
+if numGpus >= 1 && cold
+  fprintf('%s: resetting GPU\n', mfilename)
+  clearMex() ;
+  if numGpus == 1
+    temp = 1;
+    gpuDevice(temp)
+  else
+    spmd
+      clearMex() ;
+      gpuDevice(opts.gpus(labindex))
+    end
+  end
+end
 
 
 

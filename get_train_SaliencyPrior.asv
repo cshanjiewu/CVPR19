@@ -136,8 +136,8 @@ netG.meta.trainOpts = opts.train;
 % conv_param = struct('f', [4 4 64*8 1], 'pad',  0, 'stride', 2, 'bias', false);
 % i = i+1;  netD = get_Conv_dag(netD, i, sprintf('x%d',i-1), sprintf('x%d',i), conv_param);
 % i = i+1;  netD.addLayer('D_loss', dagnn.Loss('loss', 'logistic'), { sprintf('x%d',i-1),'label'},'logistic');
-
-netD = dagnn.DagNN.loadobj(load('net/imagenet-googlenet-dag')) ;
+%load the pretrained model
+netD = dagnn.DagNN.loadobj(load('net/imagenet-resnet-152-dag')) ;
 netD.addLayer('Dloss', dagnn.Loss('loss', 'softmaxlog'), {'prob', 'label'}, 'Dloss');
 netD.addLayer('error', dagnn.Loss('loss', 'classerror'), {'prob','label'}, 'error') ;
 % netD.initParams();
@@ -149,13 +149,13 @@ net = [netG, netD];
 % --------------------------------------------------------------------
 %                                                                Train
 % --------------------------------------------------------------------
-imageName = dir(fullfile('D:\ILSVRC2010\ILSVRC2010_images_val\val\'));
+imageName = dir(fullfile('D:\ILSVRC2012_img_val\'));
 
 global x ;
 global y ;
-setGlobalx(36);
-setGlobaly(99);
-for i=102:1:numel(imageName)
+setGlobalx(0);
+setGlobaly(0);
+for i=3:1:numel(imageName)
     cnn_train_dag_sp(net, imdb,imageName(i).name, @getBatchHdd, opts.train, ...
                                        'val', find(imdb.images.set == 2)) ;
     r = getGlobaly;
@@ -163,7 +163,7 @@ for i=102:1:numel(imageName)
     
     fenzi = getGlobalx();
     fenmu = getGlobaly();
-    fprintf('Failue rate: %d -----------------------------------------------\n', fenzi/fenmu);
+    fprintf('Failue rate: %d-----------------------------------------------\n', fenzi/fenmu);
            
 end
 

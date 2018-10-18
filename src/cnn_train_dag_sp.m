@@ -95,12 +95,12 @@ for epoch=1:1:2
   % is restarted from a checkpoint.
 
   rng(epoch + opts.randomSeed) ;
-  prepareGPUs(opts, epoch == start+1) ;
+  %prepareGPUs(opts, epoch == start+1) ;
 
   %bae
-  imdb.images.noise = single(randn(1, 1, 100, imdb.nSample, 'single'));
-  imdb.images.label0 = -single(ones(1, 1, 1, imdb.nSample, 'single')+imdb.label_std*randn(1, 1, 1, imdb.nSample, 'single'));
-  imdb.images.label1 = single( ones(1, 1, 1, imdb.nSample, 'single')+imdb.label_std*randn(1, 1, 1, imdb.nSample, 'single')); 
+  %imdb.images.noise = single(randn(1, 1, 100, imdb.nSample, 'single'));
+  %imdb.images.label0 = -single(ones(1, 1, 1, imdb.nSample, 'single')+imdb.label_std*randn(1, 1, 1, imdb.nSample, 'single'));
+  %imdb.images.label1 = single( ones(1, 1, 1, imdb.nSample, 'single')+imdb.label_std*randn(1, 1, 1, imdb.nSample, 'single')); 
   
   % Train for one epoch.
   params = opts ;
@@ -239,22 +239,24 @@ start = tic ;
 maxBatchNumber = 100;
 %batch 1     nume1(subset) 100
 for t=1:params.batchSize:maxBatchNumber
-    fprintf('%s: epoch %02d: %3d/%3d:', mode, epoch, ...
-          fix((t-1)/params.batchSize)+1, ceil(numel(subset)/params.batchSize)) ;
+    if t == 100
+        fprintf('%s: epoch %02d: %3d/%3d:', mode, epoch, ...
+            fix((t-1)/params.batchSize)+1, ceil(numel(subset)/params.batchSize)) ;
+    end
     batchSize = min(params.batchSize, numel(subset) - t + 1) ;
-    batchStart = t + (labindex-1);
-    batchEnd = min(t+params.batchSize-1, numel(subset)) ;
+    %batchStart = t + (labindex-1);
+    %batchEnd = min(t+params.batchSize-1, numel(subset)) ;
     
-    batch = subset(batchStart : numlabs : batchEnd);
-    inputs = params.getBatch(params.imdb, batch) ; %bae
+    %batch = subset(batchStart : numlabs : batchEnd);
+    %inputs = params.getBatch(params.imdb, batch) ; %bae
     
-    noise = inputs{4};
-    data = inputs{4};
-    label0= inputs{6};
-    label1= inputs{8};
+    %noise = inputs{4};
+    %data = inputs{4};
+    %label0= inputs{6};
+    %label1= inputs{8};
     
     %train input%
-    im = imread(strcat('D:\ILSVRC2010\ILSVRC2010_images_val\val\',imageName)) ;
+    im = imread(strcat('testInput\',imageName)) ;
     im_ = single(im)/255 ; % note: 0-255 range
     im_ = imresize(im_, netD.meta.normalization.imageSize(1:2)) ;
     noise = gpuArray(im_);
@@ -288,7 +290,7 @@ for t=1:params.batchSize:maxBatchNumber
         % update G by backpropagated grad in D
         netG.mode = 'normal'; 
         netD.mode = 'normal';
-        label1 = label1.*0+1;
+        %label1 = label1.*0+1;
 %         im_ = single(label_est) ; % note: 0-255 range
 %         im_ = imresize(im_, netD.meta.normalization.imageSize(1:2)) ;
 %         im_ = bsxfun(@minus, im_, netD.meta.normalization.averageImage) ;
@@ -313,9 +315,9 @@ for t=1:params.batchSize:maxBatchNumber
         netD.backward( params.derOutputsD); 
         netG.backward({params.derOutputsG{1}, netD.vars(1).der});
         
-        %figure(1) ; clf ; imshow([data label_est]) ;
-        %title(sprintf('GT: %s (%d), score %.3f. Pred: %s (%d), score %.3f ',...
-        %netD.meta.classes.description{best}, best, bestScore, netD.meta.classes.description{best2}, best2, bestScore2)) ;drawnow;
+        figure(1) ; clf ; imshow([data label_est]) ;
+        title(sprintf('GT: %s (%d), score %.3f. Pred: %s (%d), score %.3f ',...
+        netD.meta.classes.description{best}, best, bestScore, netD.meta.classes.description{best2}, best2, bestScore2)) ;drawnow;
     
         stateG = accumulateGradients(netG, stateG, params, batchSize, parserv) ;
         
@@ -364,13 +366,14 @@ for t=1:params.batchSize:maxBatchNumber
         adjustTime = 4*batchTime - time ;
         stats.time = time + adjustTime ;
     end
-
-    fprintf(' %.1f (%.1f) Hz', averageSpeed, currentSpeed) ;
-    for f = setdiff(fieldnames(stats)', {'num', 'time'})
-        f = char(f) ;
-        fprintf(' %s: %.10f', f, stats.(f)) ;
+    if t == 100
+        fprintf(' %.1f (%.1f) Hz', averageSpeed, currentSpeed) ;
+        for f = setdiff(fieldnames(stats)', {'num', 'time'})
+            f = char(f) ;
+            fprintf(' %s: %.10f', f, stats.(f)) ;
+        end
+        fprintf('\n') ;
     end
-    fprintf('\n') ;
 end
 
 % Save back to state.
@@ -585,6 +588,7 @@ if numGpus >= 1 && cold
   fprintf('%s: resetting GPU\n', mfilename)
   clearMex() ;
   if numGpus == 1
+    opts.gpus
     gpuDevice(opts.gpus)
   else
     spmd
