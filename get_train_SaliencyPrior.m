@@ -41,7 +41,7 @@ opts.train.learningRate = 0.0002*ones(1,5);
 opts.train.numEpochs = numel(opts.train.learningRate); 
 opts.train.batchSize = 1;
 opts.train.weightDecay = 0;
-opts.train.derOutputsG = {'L1loss', 0.0001};
+opts.train.derOutputsG = {'L1loss', 0.00008};
 opts.train.derOutputsD = {'Dloss', 1000};
 opts.train.gpus = opts.idx_gpus;
 if opts.train.gpus == 0
@@ -159,6 +159,7 @@ setGlobaly(0);
 prepareGPUs(opts, true) ;
 
 for i=3:1:numel(imageName)
+
     cnn_train_dag_sp(net, imdb,imageName(i).name, @getBatchHdd, opts.train, ...
                                        'val', find(imdb.images.set == 2)) ;
     r = getGlobaly;

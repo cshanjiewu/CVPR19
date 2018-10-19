@@ -68,6 +68,7 @@ end
 
 
 storeDir = 'output/';
+
 % -------------------------------------------------------------------------
 %                                                        Train and validate
 % -------------------------------------------------------------------------
@@ -88,7 +89,7 @@ end
 
 
 
-for epoch=1:1:2
+for epoch=1:1:1
 
   % Set the random seed based on the epoch and opts.randomSeed.
   % This is important for reproducibility, including when training
@@ -236,10 +237,12 @@ stats.time = 0 ;
 
 start = tic ;
 
+
+
 maxBatchNumber = 100;
 %batch 1     nume1(subset) 100
 for t=1:params.batchSize:maxBatchNumber
-    if t == 100
+    if t == maxBatchNumber
         fprintf('%s: epoch %02d: %3d/%3d:', mode, epoch, ...
             fix((t-1)/params.batchSize)+1, ceil(numel(subset)/params.batchSize)) ;
     end
@@ -262,13 +265,15 @@ for t=1:params.batchSize:maxBatchNumber
     end
     im_ = single(im)/255 ; % note: 0-255 range
     im_ = imresize(im_, netD.meta.normalization.imageSize(1:2)) ;
+    %im through the preprocess into im_
     noise = gpuArray(im_);
     data = noise;
     
     Iguided = imguidedfilter(im_);
-    Idetail = (im_ - Iguided)*1.5;
+    %figure(3);imshow(Iguided);
+    Idetail = (im_ - Iguided)*2;
     detail = gpuArray(Idetail);
-%     figure(2);imshow((Idetail*1.5)+Iguided);
+    %figure(2);imshow((Idetail*1.5));
         
     if strcmp(mode, 'train')
         % Update G with L1
@@ -316,15 +321,23 @@ for t=1:params.batchSize:maxBatchNumber
         scores = squeeze(gather(scores)) ;
         [bestScore2, best2] = max(scores) ;
         netD.backward( params.derOutputsD); 
+%         if best == best2
         netG.backward({params.derOutputsG{1}, netD.vars(1).der});
-        
-        figure(1) ; clf ; imshow([data label_est]) ;
-        title(sprintf('GT: %s (%d), score %.3f. Pred: %s (%d), score %.3f ',...
-        netD.meta.classes.description{best}, best, bestScore, netD.meta.classes.description{best2}, best2, bestScore2)) ;drawnow;
+%         fprintf('equal     ') ;
+%         else
+%             netG.backward({params.derOutputsG{1}, 0});
+%             fprintf('not equal     ') ;
+%         end
+%       
+%         figure(4) ; clf ; imshow(data-label_est) ;
+%         figure(1) ; clf ; imshow([data label_est]) ;
+%         title(sprintf('GT: %s (%d), score %.3f. Pred: %s (%d), score %.3f ',...
+%         netD.meta.classes.description{best}, best, bestScore, netD.meta.classes.description{best2}, best2, bestScore2)) ;drawnow;
     
         stateG = accumulateGradients(netG, stateG, params, batchSize, parserv) ;
+                
         
-        if epoch2 == 2 & t == maxBatchNumber %bae
+        if epoch2 == 1 & t == maxBatchNumber %bae
 %             im_out = uint8((gather(label_est)+1)/2*255);
             im_out = uint8(gather(label_est)*255);    
             if params.batchSize >1 
@@ -369,7 +382,21 @@ for t=1:params.batchSize:maxBatchNumber
         adjustTime = 4*batchTime - time ;
         stats.time = time + adjustTime ;
     end
-    if t == 100
+    
+    stats.('L1loss');
+    
+%     if stats.('L1loss') < 0.025
+%         ifDown = true;
+%     end
+        
+%     
+%     for f = setdiff(fieldnames(stats)', {'num', 'time','error','Dloss'})
+%             f = char(f) ;
+%             fprintf(' %s: %.10f', f, stats.(f)) ;
+%     end
+%     fprintf('\n') ;
+    
+    if t == maxBatchNumber
         fprintf(' %.1f (%.1f) Hz', averageSpeed, currentSpeed) ;
         for f = setdiff(fieldnames(stats)', {'num', 'time'})
             f = char(f) ;
