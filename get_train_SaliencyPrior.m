@@ -41,7 +41,7 @@ opts.train.learningRate = 0.0002*ones(1,5);
 opts.train.numEpochs = numel(opts.train.learningRate); 
 opts.train.batchSize = 1;
 opts.train.weightDecay = 0;
-opts.train.derOutputsG = {'L1loss', 0.001};
+opts.train.derOutputsG = {'L1loss', 0.0001};
 opts.train.derOutputsD = {'Dloss', 1000};
 opts.train.gpus = opts.idx_gpus;
 if opts.train.gpus == 0
@@ -137,7 +137,7 @@ netG.meta.trainOpts = opts.train;
 % i = i+1;  netD = get_Conv_dag(netD, i, sprintf('x%d',i-1), sprintf('x%d',i), conv_param);
 % i = i+1;  netD.addLayer('D_loss', dagnn.Loss('loss', 'logistic'), { sprintf('x%d',i-1),'label'},'logistic');
 %load the pretrained model
-netD = dagnn.DagNN.loadobj(load('net/imagenet-resnet-152-dag')) ;
+netD = dagnn.DagNN.loadobj(load('net/imagenet-googlenet-dag')) ;
 netD.addLayer('Dloss', dagnn.Loss('loss', 'softmaxlog'), {'prob', 'label'}, 'Dloss');
 netD.addLayer('error', dagnn.Loss('loss', 'classerror'), {'prob','label'}, 'error') ;
 % netD.initParams();
@@ -149,7 +149,7 @@ net = [netG, netD];
 % --------------------------------------------------------------------
 %                                                                Train
 % --------------------------------------------------------------------
-imageName = dir(fullfile('testInput\'));
+imageName = dir(fullfile('D:\ILSVRC2012_img_val\'));
 %D:\ILSVRC2012_img_val\
 global x ;
 global y ;

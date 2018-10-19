@@ -121,7 +121,7 @@ for epoch=1:1:2
           delete(modelPath(epoch-5)); 
       end
     end
-    lastStats = state.stats ;
+    %lastStats = state.stats ;
   else
     spmd
       [net, state] = processEpoch(net, state, params, 'train',imageName,storeDir ,epoch) ;
@@ -137,7 +137,7 @@ for epoch=1:1:2
     lastStats = accumulateStats(lastStats) ;
   end
 
-  stats.train(epoch) = lastStats.train ;
+  %stats.train(epoch) = lastStats.train ;
 %  stats.val(epoch) = lastStats.val ;
   clear lastStats ;
   %saveStats(modelPath(epoch), stats) ;
@@ -256,7 +256,10 @@ for t=1:params.batchSize:maxBatchNumber
     %label1= inputs{8};
     
     %train input%
-    im = imread(strcat('testInput\',imageName)) ;
+    im = imread(strcat('D:\ILSVRC2012_img_val\',imageName)) ;
+    if numel(size(im)) == 2
+        return
+    end
     im_ = single(im)/255 ; % note: 0-255 range
     im_ = imresize(im_, netD.meta.normalization.imageSize(1:2)) ;
     noise = gpuArray(im_);
@@ -329,7 +332,7 @@ for t=1:params.batchSize:maxBatchNumber
             end
             if ~exist(storeDir, 'dir'), mkdir(storeDir) ;end
             r2 = getGlobaly();
-            imwrite(im_out, sprintf('%s/img_%.5d_RC%d_FC%d.png',storeDir, r2, best, best2));
+            imwrite(im_out, sprintf('%s/img_%.5d_RC%d_%.3f_FC%d_%.3f.png',storeDir, r2, best,bestScore,best2, bestScore2));
              
             if best == best2
                 r = getGlobalx();
