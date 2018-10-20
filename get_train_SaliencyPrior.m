@@ -137,7 +137,7 @@ netG.meta.trainOpts = opts.train;
 % i = i+1;  netD = get_Conv_dag(netD, i, sprintf('x%d',i-1), sprintf('x%d',i), conv_param);
 % i = i+1;  netD.addLayer('D_loss', dagnn.Loss('loss', 'logistic'), { sprintf('x%d',i-1),'label'},'logistic');
 %load the pretrained model
-netD = dagnn.DagNN.loadobj(load('net/imagenet-googlenet-dag')) ;
+netD = dagnn.DagNN.loadobj(load('net/imagenet-vgg-verydeep-19')) ;
 netD.addLayer('Dloss', dagnn.Loss('loss', 'softmaxlog'), {'prob', 'label'}, 'Dloss');
 netD.addLayer('error', dagnn.Loss('loss', 'classerror'), {'prob','label'}, 'error') ;
 % netD.initParams();
@@ -159,6 +159,10 @@ setGlobaly(0);
 prepareGPUs(opts, true) ;
 
 for i=3:1:numel(imageName)
+    
+    if mod(i,50) == 0
+        prepareGPUs(optss,true);
+    end
 
     cnn_train_dag_sp(net, imdb,imageName(i).name, @getBatchHdd, opts.train, ...
                                        'val', find(imdb.images.set == 2)) ;

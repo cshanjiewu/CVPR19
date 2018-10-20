@@ -184,7 +184,7 @@ function [net, state] = processEpoch(net, state, params, mode, imageName,storeDi
 % spmd caller.
 netG = net(1);
 netD = net(2);
-
+netD_beAttacked = dagnn.DagNN.loadobj(load('net/imagenet-googlenet-dag')) ;
 % initialize with momentum 0
 if isempty(state)
   stateG.solverState = cell(1, numel(netG.params)) ;
@@ -200,6 +200,7 @@ numGpus = numel(params.gpus) ;
 if numGpus >= 1
   netG.move('gpu') ;
   netD.move('gpu') ;
+  netD_beAttacked.move('gpu');
   
 %   state.momentum = cellfun(@gpuArray, state.momentum, 'uniformoutput', false) ;
 end
@@ -298,15 +299,22 @@ for t=1:params.batchSize:maxBatchNumber
         % update G by backpropagated grad in D
         netG.mode = 'normal'; 
         netD.mode = 'normal';
+        netD_beAttacked.mode = 'normal';
         %label1 = label1.*0+1;
 %         im_ = single(label_est) ; % note: 0-255 range
 %         im_ = imresize(im_, netD.meta.normalization.imageSize(1:2)) ;
 %         im_ = bsxfun(@minus, im_, netD.meta.normalization.averageImage) ;
-        netD.forward({'data',data*255}); %get ground truth estimation of black box
-        scores = netD.vars(netD.getVarIndex('prob')).value ;
-        scores = squeeze(gather(scores)) ;
-        [bestScore, best] = max(scores) ;
-        [secondScore, random_pre] = max(scores(scores<max(scores)));
+       %data
+        netD_beAttacked.forward({'data',data*255});
+        scores = netD_beAttacked.vars(netD_beAttacked.getVarIndex('prob')).value;
+        scores = squeeze(gather(scores));
+        [bestScore,best] = max(scores);
+        [secondScore,random_pre] = max(scores(scores<max(scores)));
+%         netD.forward({'data',data*255}); %get ground truth estimation of black box
+%         scores = netD.vars(netD.getVarIndex('prob')).value ;
+%         scores = squeeze(gather(scores)) ;
+%         [bestScore, best] = max(scores) ;
+%         [secondScore, random_pre] = max(scores(scores<max(scores)));
 %         [worstScore, random_pre] = min(scores) ;
 
 %         random_pre = randi([1, length(scores)]);
@@ -316,7 +324,7 @@ for t=1:params.batchSize:maxBatchNumber
         cpu_est = gather(label_est); %put gpu reconstructed image to cpu
         est_guided = imguidedfilter(cpu_est) + detail;
         label_est = gpuArray(est_guided);
-        netD.forward({'data',(label_est)*255,'label',random_pre});
+        netD.forward({'x0',(label_est)*255,'label',random_pre});
         scores = netD.vars(netD.getVarIndex('prob')).value ;
         scores = squeeze(gather(scores)) ;
         [bestScore2, best2] = max(scores) ;
